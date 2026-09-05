@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Controle de Estudos</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 30px auto;
+    background: #f4f6f8;
+    color: #222;
+    padding: 0 15px;
+  }
+  h1 { text-align: center; color: #2c3e50; }
+  form {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  form input {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  form button {
+    padding: 8px 14px;
+    background: #2c7be5;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  form button:hover { background: #1b5fb8; }
+  ul { list-style: none; padding: 0; }
+  li {
+    background: #fff;
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  li.concluida { border-left: 5px solid #2ecc71; }
+  li:not(.concluida) { border-left: 5px solid #e67e22; }
+  .info { flex: 1; }
+  .info strong { display: block; }
+  .info span { font-size: 0.85em; color: #666; }
+  .acoes button {
+    margin-left: 4px;
+    padding: 5px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+  .btn-toggle { background: #f1c40f; }
+  .btn-remover { background: #e74c3c; color: #fff; }
+  #vazio { text-align: center; color: #888; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<h1>📚 Controle de Estudos</h1>
+
+<form id="form-disciplina">
+  <input type="text" id="input-nome" placeholder="Nome da disciplina" required>
+  <input type="number" id="input-horas" placeholder="Horas estudadas" min="0" required>
+  <button type="submit">Adicionar</button>
+</form>
+
+<ul id="lista-disciplinas"></ul>
+<p id="vazio" style="display:none;">Nenhuma disciplina cadastrada ainda.</p>
+
+<script>
+  const CHAVE_STORAGE = "disciplinas";
+
+  function carregarDisciplinas() {
+    const dados = localStorage.getItem(CHAVE_STORAGE);
+    if (dados === null) {
+      return [];
+    }
+    return JSON.parse(dados);
+  }
+
+  function salvarDisciplinas(disciplinas) {
+    localStorage.setItem(CHAVE_STORAGE, JSON.stringify(disciplinas));
+  }
+
+  let disciplinas = carregarDisciplinas();
+
+  function adicionarDisciplina(nome, horasEstudadas) {
+    const novaDisciplina = {
+      nome: nome,
+      horasEstudadas: horasEstudadas,
+      concluida: false
+    };
+
+    disciplinas = carregarDisciplinas();
+    disciplinas.push(novaDisciplina);
+    salvarDisciplinas(disciplinas);
+
+    renderizarLista();
+  }
+
+  function alternarConclusao(indice) {
+    disciplinas = carregarDisciplinas();
+    disciplinas[indice].concluida = !disciplinas[indice].concluida;
+    salvarDisciplinas(disciplinas);
+
+    renderizarLista();
+  }
+
+  function removerDisciplina(indice) {
+    disciplinas = carregarDisciplinas();
+    disciplinas.splice(indice, 1);
+    salvarDisciplinas(disciplinas);
+
+    renderizarLista();
+  }
+
+  function renderizarLista() {
+    const lista = document.getElementById("lista-disciplinas");
+    const vazio = document.getElementById("vazio");
+
+    lista.innerHTML = "";
+
+    if (disciplinas.length === 0) {
+      vazio.style.display = "block";
+      return;
+    }
+    vazio.style.display = "none";
+
+    disciplinas.forEach((disciplina, indice) => {
+      const li = document.createElement("li");
+      li.className = disciplina.concluida ? "concluida" : "";
+
+      li.innerHTML = `
+        <div class="info">
+          <strong>${disciplina.nome}</strong>
+          <span>${disciplina.horasEstudadas}h estudadas — ${disciplina.concluida ? "Concluída ✅" : "Em andamento ⏳"}</span>
+        </div>
+        <div class="acoes">
+          <button class="btn-toggle" data-indice="${indice}">
+            ${disciplina.concluida ? "Reabrir" : "Concluir"}
+          </button>
+          <button class="btn-remover" data-indice="${indice}">Remover</button>
+        </div>
+      `;
+
+      lista.appendChild(li);
+    });
+  }
+
+  document.getElementById("form-disciplina").addEventListener("submit", function (evento) {
+    evento.preventDefault();
+
+    const inputNome = document.getElementById("input-nome");
+    const inputHoras = document.getElementById("input-horas");
+
+    const nome = inputNome.value.trim();
+    const horas = Number(inputHoras.value);
+
+    if (nome === "" || isNaN(horas)) return;
+
+    adicionarDisciplina(nome, horas);
+
+    inputNome.value = "";
+    inputHoras.value = "";
+    inputNome.focus();
+  });
+
+  document.getElementById("lista-disciplinas").addEventListener("click", function (evento) {
+    const indice = evento.target.dataset.indice;
+    if (indice === undefined) return;
+
+    if (evento.target.classList.contains("btn-toggle")) {
+      alternarConclusao(Number(indice));
+    }
+
+    if (evento.target.classList.contains("btn-remover")) {
+      removerDisciplina(Number(indice));
+    }
+  });
+
+  renderizarLista();
+</script>
+
+</body>
+</html>
